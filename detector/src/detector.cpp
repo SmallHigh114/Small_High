@@ -75,7 +75,7 @@ cv::Mat Detector::preprocessImage(const cv::Mat& rgb_img)
     if (peakStart >= 0) peaks.push_back({peakStart, binary_img.cols});
 
     // 切割像素宽度
-    const int cutWidth = 3;
+    const int cutWidth = 5;
     for (int i = 1; i < (int)peaks.size(); ++i) {
         int lo = peaks[i-1].second;
         int hi = peaks[i].first;
@@ -129,7 +129,7 @@ std::vector<cv::Point2f> Detector::getCenter(cv::Rect& min_rect)
     // std::cout << "Laser Ratio: " << width / height << std::endl;
 
     // 6灯
-    if ((min_rect.width / min_rect.height) > 0.5)
+    if (lm.type == LaserType::SIX)
     {
         // 排序顺序：从左上开始逆时针排序
         points = 
@@ -169,13 +169,10 @@ std::vector<cv::Rect> Detector::lightExtractor(const cv::Mat& binary_img)
     {
         auto r_rect = cv::minAreaRect(contour);
         auto rect = r_rect.boundingRect();
-
-        float ratio = r_rect.size.width / r_rect.size.height;
         if (r_rect.size.width <= 0 || r_rect.size.height <= 0) continue;
-        if (ratio < lp.min_Ratio) 
-            {
-                continue;
-            }
+        float ratio = r_rect.size.width / r_rect.size.height;
+        std::cout << "Light Area: " << rect.area() << std::endl;
+        // if (!isLightArea(rect,ratio)) continue;
         // std::cout << "Light Ratio: " << ratio << std::endl;
         rects.push_back(rect);
     }
@@ -204,11 +201,21 @@ std::vector<cv::Rect> Detector::lightExtractor(const cv::Mat& binary_img)
     return rects_;
 }
 
+bool Detector::isLightArea(const cv::Rect& rect, const float& ratio)
+{
+    bool area_ok =  rect.area() < 10;
+    bool ratio_ok = ratio < lp.min_Ratio;
+
+    bool all_ok = area_ok && ratio_ok;
+    return all_ok;
+}
+
 bool Detector::isLight(const cv::Rect& rect1, const cv::Rect& rect2)
 {
     bool x_similar = cv::abs(rect1.x -rect2.x) < lp.max_error;
     bool y_NSimilar = cv::abs(rect1.y -rect2.y) > lp.max_error;
-
+    float area_ratio = rect1.area() / rect2.area();
+    // bool area_ratio_ok = (area_ratio > 0.5 || area_ratio < 2); // 面积比例参数
     // std::cout << "x坐标差值: " << cv::abs(rect1.center.x -rect2.center.x) << std::endl;
     // std::cout << "y坐标差值: " << cv::abs(rect1.center.y -rect2.center.y) << std::endl;
 

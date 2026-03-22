@@ -14,12 +14,11 @@ int main() {
 	cv::Mat tvec;
 	// std::array<double, 9> camera_matrix = 
 	// {
-
 	// };
     // std::vector<double> distortion_coefficients = {};
 	Detector::LaserParam laserparam;
-	laserparam.max_error = 15.00;
-	laserparam.min_Ratio = 0.5;
+	laserparam.max_error = 10.00;
+	laserparam.min_Ratio = 0.8;
 
 	Detector detector(88, 0, laserparam);
 	// PnPSolver pnpsolver(camera_matrix,distortion_coefficients);
@@ -30,6 +29,7 @@ int main() {
 	// HikCamera camera(0);
 
 	cv::VideoCapture camera("../Video_20260315182119088.avi");
+	// cv::VideoCapture camera("../Video_20260315182913969.avi");
 
 	if (!camera.isOpened())
 	{

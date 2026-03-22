@@ -58,6 +58,8 @@ private:
 
 	cv::Rect laserArea(const cv::Mat& binary_image, const std::vector<cv::Rect>& rects);
 
+	bool isLightArea(const cv::Rect& rect, const float& ratio);
+
 	/**
 	 * @brief 判断是否为所需灯
 	 */
