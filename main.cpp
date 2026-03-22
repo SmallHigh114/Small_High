@@ -23,7 +23,7 @@ int main() {
 
 	Detector detector(88, 0, laserparam);
 	// PnPSolver pnpsolver(camera_matrix,distortion_coefficients);
-	YOLO yolo("../YOLO/classes.txt", "../YOLO/module.onnx", 0.5);
+	YOLO yolo("../module/classes.txt", "../module/module.onnx", 0.5);
 	UI ui;
 
 	// 相机
