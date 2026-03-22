@@ -1,0 +1,80 @@
+检测到: module  置信度: 0.898814  位置: [198,103,46,51]
+Light Ratio: -nan
+Light Ratio: 1.4
+Light Ratio: 0.888889
+Light Ratio: 0.75
+Light Ratio: 1
+Light Ratio: 1
+Light Ratio: 0.818182
+Laser Ratio(): 0.906977
+Light Number: 7
+Laser Ratio(): 0.906977
+
+检测到: module  置信度: 0.888834  位置: [204,105,46,51]
+Light Ratio: -nan
+Light Ratio: 1.4
+Light Ratio: 0.888889
+Light Ratio: 0.692308
+Light Ratio: 1
+Light Ratio: 1
+Light Ratio: 0.818182
+Laser Ratio(): 0.906977
+Light Number: 7
+Laser Ratio(): 0.906977
+
+检测到: module  置信度: 0.906008  位置: [234,108,46,52]
+Light Ratio: -nan
+Light Ratio: 0.777778
+Light Ratio: 0.625
+Light Ratio: 1.1
+Light Ratio: 0.875
+Light Ratio: 0.818182
+Light Ratio: 1.28571
+Laser Ratio(): 0.906977
+Light Number: 7
+Laser Ratio(): 0.906977
+
+检测到: module  置信度: 0.888916  位置: [254,115,45,51]
+Light Ratio: -nan
+Light Ratio: 1.4
+Light Ratio: 0.888889
+Light Ratio: 0.818182
+Light Ratio: 1
+Light Ratio: 1
+Light Ratio: 0.818182
+Laser Ratio(): 0.906977
+Light Number: 7
+Laser Ratio(): 0.906977
+
+检测到: module  置信度: 0.893018  位置: [272,116,46,51]
+Light Ratio: -nan
+Light Ratio: 0.777778
+Light Ratio: 1.4
+Light Ratio: 0.615385
+Light Ratio: 0.875
+Light Ratio: 0.818182
+Light Ratio: 1.28571
+Laser Ratio(): 0.951219
+Light Number: 7
+Laser Ratio(): 0.951219
+
+检测到: module  置信度: 0.887238  位置: [273,117,46,51]
+Light Ratio: -nan
+Light Ratio: 1.6
+Light Ratio: 0.888889
+Light Ratio: 0.818182
+Light Ratio: 1
+Light Ratio: 1
+Light Ratio: 0.818182
+Laser Ratio(): 0.906977
+Light Number: 7
+Laser Ratio(): 0.906977
+
+检测到: module  置信度: 0.888559  位置: [273,117,46,51]
+Light Ratio: 1.4
+Light Ratio: 1
+Light Ratio: 0.777778
+Light Ratio: 0.818182
+Laser Ratio(): 0.534884
+Light Number: 3
+Laser Ratio(): 0.534884

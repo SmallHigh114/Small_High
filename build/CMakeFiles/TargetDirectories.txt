@@ -1,0 +1,3 @@
+/home/smallhigh/workspace/laser_moudle/build/CMakeFiles/rebuild_cache.dir
+/home/smallhigh/workspace/laser_moudle/build/CMakeFiles/edit_cache.dir
+/home/smallhigh/workspace/laser_moudle/build/CMakeFiles/LaserModule.dir
