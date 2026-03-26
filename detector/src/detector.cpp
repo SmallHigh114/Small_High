@@ -87,7 +87,6 @@ cv::Mat Detector::preprocessImage(const cv::Mat& rgb_img)
             cv::Point(minIdx + cutWidth / 2, binary_img.rows - 1),
             0, cv::FILLED);
     }
-
     cv::imshow("binary_img", binary_img);
     return binary_img;
 }
@@ -171,7 +170,7 @@ std::vector<cv::Rect> Detector::lightExtractor(const cv::Mat& binary_img)
         auto rect = r_rect.boundingRect();
         if (r_rect.size.width <= 0 || r_rect.size.height <= 0) continue;
         float ratio = r_rect.size.width / r_rect.size.height;
-        std::cout << "Light Area: " << rect.area() << std::endl;
+        // std::cout << "Light Area: " << rect.area() << std::endl;
         // if (!isLightArea(rect,ratio)) continue;
         // std::cout << "Light Ratio: " << ratio << std::endl;
         rects.push_back(rect);
