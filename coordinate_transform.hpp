@@ -2,12 +2,17 @@
 // 代码全部以右手坐标系为准
 // 电控传入的yaw值默认右手坐标系下的坐标轴指向为正值
 
-#ifndef TRANSFORM_COORDINATE_COORDINATE_TRANSFORM_HPP
-#define TRANSFORM_COORDINATE_COORDINATE_TRANSFORM_HPP
+#ifndef COORDINATE_TRANSFORM_HPP
+#define COORDINATE_TRANSFORM_HPP
 
-#include <opencv2/opencv.hpp>
-#include <Eigen/Dense>
+#include <cmath>
 #include <optional>
+
+#include <Eigen/Core>
+#include <Eigen/Dense>
+
+#include <opencv2/core/mat.hpp>
+#include <opencv2/calib3d.hpp>
 #include <opencv2/core/eigen.hpp>
 
 namespace TransForm
@@ -19,8 +24,10 @@ namespace TransForm
  * @param tvec          输入点的位置向量
  * @param gimbal_pitch  云台pitch角
  * @param cam2gimDis    相机光心到云台距离
- * @param odom_pitch 云台到世界坐标系pitch角
+ * @param odom_pitch    云台到世界坐标系pitch角
  * @param gim2odomDis   云台到世界坐标系距离
+ * @param odom_tvec     返回Odom坐标系下的位置
+ * @param odom_rvec     范围Odom坐标系下的姿态
  * @param gimbal_yaw    云台yaw角 默认为0
  * @param roll          世界坐标系下的roll角 默认为0
  */
@@ -31,77 +38,166 @@ void coordinateTransform(
     const float & cam2gimDis,
     const float & odom_pitch,
     const float & gim2odomDis,
+    cv::Mat & odom_tvec,
+    cv::Mat & odom_rvec,
     const float & gimbal_yaw = 0,
     const float & roll = 0
 )
 {
-    Eigen::Vector3d optical_center;
-    optical_center << tvec.at<double>(0),
+    Eigen::Vector3d P_photocenter;
+    P_photocenter << tvec.at<double>(0),
                         tvec.at<double>(1),
                         tvec.at<double>(2);
-    camera_coordinate(0) = -optical_center(1); // x
-    camera_coordinate(1) = -optical_center(2); // y
-    camera_coordinate(2) = optical_center(0);  // z
+    // camera photocenter coordinate system to camera coordinate system
+    Eigen::Matrix3d R_camera_photocenter;
+    R_camera_photocenter << 
+        0,  0,  1,
+        -1,  0,  0,
+        0, -1,  0;
+    Eigen::Vector3d P_camera =
+    R_camera_photocenter * P_photocenter;
     
-    float angle = std::atan2(camera_coordinate(1) ,camera_coordinate(0));
-    float gim_pitch_deg = gimbal_pitch * 180.0 / M_PI;
-    float gim_yaw_deg = gimbal_yaw * 180.0 / M_PI;
-    float distance = std::sqrt(camera_coordinate(0) * camera_coordinate(0) + camera_coordinate(1) * camera_coordinate(1));
+    // camera coordinate system to gimbal coordinate system
+    Eigen::Matrix3d R_gimbal_camera;
+    R_gimbal_camera <<
+        cos(gimbal_yaw), -sin(gimbal_yaw), 0,
+        sin(gimbal_yaw), cos(gimbal_yaw), 0,
+        0, 0, 1;
 
-    if (gimbal_yaw != 0 && gimbal_yaw > 0)
-    {
-        float dif_angle = angle - std::abs(gim_yaw_deg);
-        camera_coordinate(0) = distance * sin(dif_angle);
-        camera_coordinate(1) = distance * cos(dif_angle);
-    } 
-    else if (gimbal_yaw != 0 && gimbal_yaw < 0)
-    {
-        float fit_angle = angle + std::abs(gim_yaw_deg);
-        camera_coordinate(0) = distance * sin(fit_angle);
-        camera_coordinate(1) = distance * cos(fit_angle);
+    // Calculate t
+    Eigen::Vector3d t_gimbal;
+    t_gimbal << 1, 1, 1;
+    float dis_cam = std::sqrt((t_gimbal(0) * t_gimbal(0)) + (t_gimbal(1) * t_gimbal(1)));
+    
+    if (gimbal_yaw != 0) {
+        float angle_new;
+        float angle_cam = std::atan2(t_gimbal(1), t_gimbal(0));
+        if (gimbal_yaw > 0) {
+            angle_new = angle_cam + gimbal_yaw;
+        }
+        else{
+            angle_new = angle_cam - gimbal_yaw;
+        }
+        t_gimbal(0) = dis_cam * std::cos(angle_new);
+        t_gimbal(1) = dis_cam * std::sin(angle_new);
     }
 
-    // camera to odom
-    float dx_cg = cam2gimDis * cos(gim_pitch_deg) * cos(angle);
-    float dy_cg = cam2gimDis * cos(gim_pitch_deg) * sin(angle);
-    float dz_cg = cam2gimDis * sin(gim_pitch_deg);
+    float angle_cam = std::atan2(t_gimbal(1), t_gimbal(0));
+    t_gimbal(2) = t_gimbal(2) +  cam2gimDis * sin(gimbal_pitch);
+    float dis_xoy = cam2gimDis * cos(gimbal_pitch);
+    t_gimbal(0) = t_gimbal(0) + dis_xoy * std::cos(angle_cam);
+    t_gimbal(1) = t_gimbal(1) + dis_xoy * std::sin(angle_cam);
     
-    gimbal_coordinate(0) = camera_coordinate(0) + dx_cg;
-    gimbal_coordinate(1) = camera_coordinate(1) + dy_cg;
-    gimbal_coordinate(2) = camera_coordinate(2) + dz_cg;
+    Eigen::Vector3d P_gimbal = 
+        R_gimbal_camera * P_camera + t_gimbal;
 
+    // gimbal coordinate system to odom coordinate system
+    Eigen::Matrix3d I = Eigen::Matrix3d::Identity();
+    Eigen::Vector3d t_odom;
+    t_odom(2) = gim2odomDis * std::sin(odom_pitch);
+    t_odom(0) = gim2odomDis * std::cos(odom_pitch);
+    t_odom(1) = 0;
 
-    // gimbal to odom
-    float gim_angle = std::atan2(gimbal_coordinate(1) ,gimbal_coordinate(0));
-    float odom_pitch_deg = odom_pitch * 180.0 / M_PI;
+    Eigen::Vector3d P_odom = 
+        I * P_gimbal + t_odom;
 
-    float dx_go = gim2odomDis * cos(odom_pitch_deg) * cos(gim_angle);
-    float dy_go = gim2odomDis * cos(odom_pitch_deg) * sin(gim_angle);
-    float dz_go = gim2odomDis * sin(odom_pitch_deg);
     
-    odom_coordinate(0) = gimbal_coordinate(0) + dx_go;
-    odom_coordinate(1) = gimbal_coordinate(1) + dy_go;
-    odom_coordinate(2) = gimbal_coordinate(2) + dz_go;
+    odom_tvec.at<double>(0,0) = P_odom(0);
+    odom_tvec.at<double>(1,0) = P_odom(1);
+    odom_tvec.at<double>(2,0) = P_odom(2);
+    
+    // Transform rvec
+    cv::Mat R_cam_obj_cv;
+    cv::Rodrigues(rvec, R_cam_obj_cv);
 
+    Eigen::Matrix3d R_cam_obj;
+    for (int i = 0; i < 3; i++) 
+    {        
+        for (int j = 0; j < 3; j++) 
+        {
+            R_cam_obj(i, j) = R_cam_obj_cv.at<double>(i, j);
+        }
+    }
+    Eigen::Matrix3d R_total = R_gimbal_camera * R_camera_photocenter;
+    Eigen::Matrix3d R_odom_obj = R_total * R_cam_obj;
 
-    cv::Mat odom_tvec;
-    cv::eigen2cv(odom_coordinate, odom_tvec);
+    if (roll != 0)
+    {
+        Eigen::Matrix3d add_roll;
+        add_roll <<
+        1, 0, 0,
+        0, cos(roll), -sin(roll),
+        0, sin(roll),  cos(roll);
+        R_odom_obj *= add_roll;
+    }
+
+    cv::Mat R_odom_obj_cv(3, 3, CV_64F);
+    for (int i = 0; i < 3; i++)
+    {
+        for (int j = 0; j < 3; j++)
+        {
+            R_odom_obj_cv.at<double>(i, j) = R_odom_obj(i, j);
+        }
+    }
+    cv::Rodrigues(R_odom_obj_cv, odom_rvec);
 }
 
-Eigen::Matrix3d rvec2Rmatrix(const cv::Mat & rvec)
-{
-    cv::Mat R; 
-    cv::Rodrigues(rvec, R);
-    Eigen::Matrix3d R_; 
-    cv::cv2eigen(R, R_);
-    return R_;
 }
+#endif // COORDINATE_TRANSFORM_HPP
+/**
+//  * @brief 几何转化，貌似不太对
+//  */
+// cv::Mat tvecTransform(
+//     const cv::Mat & tvec, 
+//     const float & gimbal_pitch,
+//     const float & cam2gimDis,
+//     const float & odom_pitch,
+//     const float & gim2odomDis,
+//     const float & gimbal_yaw = 0,
+//     const float & roll = 0
+// )
+// {
+//     cv::Mat odom_tvec;
+//     Eigen::Vector3d optical_center;
+//     optical_center << tvec.at<double>(0),
+//                         tvec.at<double>(1),
+//                         tvec.at<double>(2);
+//     camera_coordinate(0) = optical_center(2); // x
+//     camera_coordinate(1) = -optical_center(0); // y
+//     camera_coordinate(2) = -optical_center(1);  // z
 
-Eigen::Vector3d camera_coordinate; // 相机坐标系
-Eigen::Vector3d gimbal_coordinate; // 云台坐标系
-Eigen::Vector3d odom_coordinate;   // Odom坐标系
-}
+//     // cameara coordinate to gimbal coordinate
+//     float dis_cam = std::sqrt((camera_coordinate(0) * camera_coordinate(0)) + (camera_coordinate(1) * camera_coordinate(1)));
+    
+//     if (gimbal_yaw != 0) {
+//         float angle_new;
+//         float angle_cam = std::atan2(camera_coordinate(1), camera_coordinate(0));
+//         if (gimbal_yaw > 0) {
+//             angle_new = angle_cam + gimbal_yaw;
+//         }
+//         else{
+//             angle_new = angle_cam - gimbal_yaw;
+//         }
+//         camera_coordinate(0) = dis_cam * std::cos(angle_new);
+//         camera_coordinate(1) = dis_cam * std::sin(angle_new);
+//     }
 
+//     float angle_cam = std::atan2(camera_coordinate(1), camera_coordinate(0));
+//     gimbal_coordinate(2) = camera_coordinate(2) +  cam2gimDis * sin(gimbal_pitch);
+//     float dis_xoy = cam2gimDis * cos(gimbal_pitch);
+//     gimbal_coordinate(0) = camera_coordinate(0) + dis_xoy * std::cos(angle_cam);
+//     gimbal_coordinate(1) = camera_coordinate(1) + dis_xoy * std::sin(angle_cam);
 
+//     // gimbal coordinate to odom coordinate
+//     odom_coordinate(2) = gimbal_coordinate(2) + gim2odomDis * std::sin(odom_pitch);
+//     odom_coordinate(0) = gimbal_coordinate(0) + gim2odomDis * std::cos(odom_pitch);
+//     odom_coordinate(1) = gimbal_coordinate(1);
 
-#endif // TRANSFORM_COORDINATE_COORDINATE_TRANSFORM_HPP
+//     cv::eigen2cv(odom_coordinate, odom_tvec);
+
+//     return odom_tvec;
+// }
+
+// Eigen::Vector3d camera_coordinate; // 相机坐标系
+// Eigen::Vector3d gimbal_coordinate; // 云台坐标系
+// Eigen::Vector3d odom_coordinate;   // Odom坐标系
