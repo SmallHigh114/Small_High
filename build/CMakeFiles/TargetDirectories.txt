@@ -1,0 +1,3 @@
+/home/a/src_/transform_coordinate/build/CMakeFiles/test.dir
+/home/a/src_/transform_coordinate/build/CMakeFiles/edit_cache.dir
+/home/a/src_/transform_coordinate/build/CMakeFiles/rebuild_cache.dir
