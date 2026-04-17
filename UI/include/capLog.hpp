@@ -7,7 +7,9 @@
 #include <ctime>
 #include <iomanip>
 #include <sstream>
-
+/**
+ * 捕获日志
+ */
 namespace debug
 {
 // ================= TeeBuf：双输出缓冲区 =================

@@ -11,9 +11,11 @@
 #include "UI/include/draw_ui.hpp"
 #include "UI/include/capLog.hpp"
 
+// #define DEBUG
+
 int main() {
 	#ifdef DEBUG
-	// debug::Logger logger("output");
+	debug::Logger logger("output");
 	#endif // DEBUG
 	cv::Mat frame;
 	cv::Mat rvec;
@@ -41,8 +43,8 @@ int main() {
 	// 相机
 	// HikCamera camera(0);
 
-	cv::VideoCapture camera("../Video_20260315182119088.avi");
-	// cv::VideoCapture camera("../Video_20260315182913969.avi");
+	// cv::VideoCapture camera("../Video_20260315182119088.avi");
+	cv::VideoCapture camera("../Video_20260315182913969.avi");
 	// cv::VideoCapture camera("../60s.mp4");
 
 	if (!camera.isOpened())

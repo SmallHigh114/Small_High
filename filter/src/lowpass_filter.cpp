@@ -7,10 +7,11 @@ AdaptiveLowPassFilter::AdaptiveLowPassFilter(const FilterParam& fp)
 
 LaserModule AdaptiveLowPassFilter::apply(const LaserModule& laserModule)
 {
-    const auto& centers = laserModule.Centers;
+    const std::vector<cv::Point2f>& centers = laserModule.Centers;
+    const size_t num = centers.size();
     if (centers.empty()) return laserModule;
 
-    if (initialized_ && prev_.size() != centers.size())
+    if (initialized_ && prev_.size() != num)
     {
         initialized_ = false;
     }
@@ -23,23 +24,22 @@ LaserModule AdaptiveLowPassFilter::apply(const LaserModule& laserModule)
     }
 
     float max_disp = 0.f;
-    for (size_t i = 0; i < centers.size(); ++i) {
+    for (size_t i = 0; i < num; ++i) 
+    {
         float dx = centers[i].x - prev_[i].x;
         float dy = centers[i].y - prev_[i].y;
         max_disp = std::max(max_disp, std::sqrt(dx*dx + dy*dy));
     }
-    float alpha_target = (max_disp > fp_.motion_thresh)
-                        ? fp_.alpha_dynamic
-                        : fp_.alpha_static;
+    float alpha_target = (max_disp > fp_.motion_thresh) ? fp_.alpha_dynamic : fp_.alpha_static;
 
     alpha_current_ += fp_.smooth_rate * (alpha_target - alpha_current_);
 
     const float a = alpha_current_;
     const float a_t = 2.f * a / (1.f + a);   // Tustin 修正
 
-    const size_t n = centers.size();
-    std::vector<cv::Point2f> smoothed(n);
-    for (size_t i = 0; i < n; ++i) {
+    std::vector<cv::Point2f> smoothed(num);
+    for (size_t i = 0; i < num; ++i) 
+    {
         smoothed[i].x = a_t * centers[i].x + (1.f - a_t) * prev_[i].x;
         smoothed[i].y = a_t * centers[i].y + (1.f - a_t) * prev_[i].y;
     }

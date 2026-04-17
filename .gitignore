@@ -1,0 +1,23 @@
+# GitHub Upload Directory
+*
+!HikCamera/
+!module/
+!YOLO/
+!detector/
+!filter/
+!pnp_solver/
+!UI/
+
+!HikCamera/**
+!module/**
+!YOLO/**
+!detector/**
+!filter/**
+!pnp_solver/**
+!UI/**
+
+!main.cpp
+
+!30s.mp4
+
+!.gitignore
