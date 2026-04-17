@@ -15,9 +15,10 @@
 !filter/**
 !pnp_solver/**
 !UI/**
-
 !main.cpp
 
+# Test video
 !30s.mp4
 
+# Git ignor file
 !.gitignore
