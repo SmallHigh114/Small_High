@@ -2,6 +2,7 @@
 #include <chrono>
 
 #include "coordinate_transform.hpp"
+#include "rvec_visualizer.hpp"
 
 int main()
 {
@@ -12,22 +13,21 @@ int main()
     cv::Mat odom_tvec = cv::Mat::zeros(3, 1, CV_64F);
     cv::Mat odom_rvec = cv::Mat::zeros(3, 1, CV_64F);
 
-    float cam2gim_angle = 0.8727;
-    float cam2gimDis = 0.1;
-    float gim2odom_angle = 1.5708;
-    float gim2odomDis = 0.05;
-    float gimbal_pitch = 0.11;
-    float gimbal_yaw = 0.23;
+    float cam2gim_angle = 0.7853;
+    float cam2gimDis = 1.414;
+    float gim2odom_angle = 0.7853;
+    float gim2odomDis = 1.414;
+    float gimbal_pitch = 0;
+    float gimbal_yaw = 0;
     float gimbal_yaw_mis = 0;
-    float roll = 0.05;
+    float roll = 0;
 
     tvec.at<double>(0,0) = 0;
-    tvec.at<double>(1,0) = 0;
-    tvec.at<double>(2,0) = 0.5;
-    rvec.at<double>(0,0) = 0;
-    rvec.at<double>(1,0) = 0.52359;
+    tvec.at<double>(1,0) = -1;
+    tvec.at<double>(2,0) = 1;
+    rvec.at<double>(0,0) = -0.7854;
+    rvec.at<double>(1,0) = 0;
     rvec.at<double>(2,0) = 0;
-
 
     TransForm::coordinateTransform(
         tvec,
@@ -56,5 +56,6 @@ int main()
     std::cout << "----------------------------------" << std::endl;
     std::cout << "Total time: " << duration_ms << " ms" << std::endl;
 
+    rvec_vis::show(odom_rvec);
     return 0;
 }
