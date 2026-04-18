@@ -13,8 +13,7 @@ int main()
     cv::Mat odom_tvec = cv::Mat::zeros(3, 1, CV_64F);
     cv::Mat odom_rvec = cv::Mat::zeros(3, 1, CV_64F);
 
-    float cam2gim_angle = 0.7853;
-    float cam2gimDis = 1.414;
+    float cam2gimDis = 1;
     float gim2odom_angle = 0.7853;
     float gim2odomDis = 1.414;
     float gimbal_pitch = 0;
@@ -31,7 +30,6 @@ int main()
     TransForm::coordinateTransform(
         tvec,
         rvec,
-        cam2gim_angle, 
         cam2gimDis, 
         gim2odom_angle, 
         gim2odomDis, 

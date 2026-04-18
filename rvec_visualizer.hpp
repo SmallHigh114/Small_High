@@ -93,6 +93,7 @@ public:
      */
     void update(const cv::Vec3d& rvec, int delay_ms = 1)
     {
+        if (window_.wasStopped()) return; 
         // rvec → 旋转矩阵
         cv::Mat R;
         cv::Rodrigues(rvec, R);

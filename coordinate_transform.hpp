@@ -25,7 +25,6 @@ namespace TransForm
  * @param tvec 输入初始平移向量
  * @param rvec 输入初始旋转向量
  * 
- * @param cam2gim_angle 相机坐标系到云台坐标系连杆与水平面夹角
  * @param cam2gimDis 相机坐标系原点到云台坐标系原点距离
  * @param gim2odom_angle 云台坐标系到世界坐标系连杆与水平面夹角
  * @param gim2odomDis 云台坐标系原点到世界坐标原点距离
@@ -41,7 +40,6 @@ namespace TransForm
 void coordinateTransform(
     const cv::Mat & tvec, 
     const cv::Mat & rvec,
-    const float & cam2gim_angle,
     const float & cam2gimDis,
     const float & gim2odom_angle,
     const float & gim2odomDis,
@@ -70,28 +68,26 @@ void coordinateTransform(
     /// camera coordinate system to gimbal coordinate system
     Eigen::Matrix3d R_yaw;
     R_yaw <<
-    cos(gimbal_yaw), -sin(gimbal_yaw), 0,
-    sin(gimbal_yaw), cos(gimbal_yaw), 0,
-    0, 0, 1;
+        cos(gimbal_yaw), -sin(gimbal_yaw), 0,
+        sin(gimbal_yaw), cos(gimbal_yaw), 0,
+        0, 0, 1;
     Eigen::Matrix3d R_pitch;
     R_pitch <<
-    cos(gimbal_pitch), 0, sin(gimbal_pitch),
-    0, 1, 0,
-    -sin(gimbal_pitch), 0, cos(gimbal_pitch);
+        cos(gimbal_pitch), 0, sin(gimbal_pitch),
+        0, 1, 0,
+        -sin(gimbal_pitch), 0, cos(gimbal_pitch);
     Eigen::Matrix3d R_roll;
     R_roll << 
-    1, 0, 0,
-    0, cos(roll), -sin(roll),
-    0, sin(roll), cos(roll);
+        1, 0, 0,
+        0, cos(roll), -sin(roll),
+        0, sin(roll), cos(roll);
 
     Eigen::Matrix3d R_gimbal_camera;
-    R_gimbal_camera <<
-        1, 0, 0,
-        0, 1, 0,
-        0, 0, 1;
-    Eigen::Vector3d t_gimbal;
-    t_gimbal << cam2gimDis * cos(cam2gim_angle), 0, cam2gimDis * sin(cam2gim_angle);
+    R_gimbal_camera = R_pitch;
 
+    Eigen::Vector3d t_gimbal;
+    t_gimbal << cam2gimDis * cos(gimbal_pitch), 0, cam2gimDis * sin(gimbal_pitch);
+    std::cout << "t_gimbal" << std::endl << t_gimbal << std::endl;
     Eigen::Vector3d P_gimbal = 
     R_gimbal_camera * P_camera + t_gimbal;
     std::cout << "P_gimbal" << std::endl << P_gimbal << std::endl;
@@ -99,7 +95,7 @@ void coordinateTransform(
     /// gimbal coordinate system to odom coordinate system
 
     Eigen::Matrix3d R_odom_gimbal;
-    R_odom_gimbal = R_yaw * R_pitch * R_roll;
+    R_odom_gimbal = R_yaw * R_roll;
 
     Eigen::Vector3d t_odom;
     t_odom << gim2odomDis * cos(gim2odom_angle), 0, gim2odomDis * sin(gim2odom_angle);
