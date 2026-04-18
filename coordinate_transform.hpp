@@ -68,19 +68,6 @@ void coordinateTransform(
     std::cout << "P_camera" << std::endl << P_camera << std::endl;
 
     /// camera coordinate system to gimbal coordinate system
-    Eigen::Matrix3d R_gimbal_camera;
-    R_gimbal_camera <<
-        1, 0, 0,
-        0, 1, 0,
-        0, 0, 1;
-    Eigen::Vector3d t_gimbal;
-    t_gimbal << cam2gimDis * cos(cam2gim_angle), 0, cam2gimDis * sin(cam2gim_angle);
-
-    Eigen::Vector3d P_gimbal = 
-    R_gimbal_camera * P_camera + t_gimbal;
-    std::cout << "P_gimbal" << std::endl << P_gimbal << std::endl;
-
-    /// gimbal coordinate system to odom coordinate system
     Eigen::Matrix3d R_yaw;
     R_yaw <<
     cos(gimbal_yaw), -sin(gimbal_yaw), 0,
@@ -97,6 +84,20 @@ void coordinateTransform(
     0, cos(roll), -sin(roll),
     0, sin(roll), cos(roll);
 
+    Eigen::Matrix3d R_gimbal_camera;
+    R_gimbal_camera <<
+        1, 0, 0,
+        0, 1, 0,
+        0, 0, 1;
+    Eigen::Vector3d t_gimbal;
+    t_gimbal << cam2gimDis * cos(cam2gim_angle), 0, cam2gimDis * sin(cam2gim_angle);
+
+    Eigen::Vector3d P_gimbal = 
+    R_gimbal_camera * P_camera + t_gimbal;
+    std::cout << "P_gimbal" << std::endl << P_gimbal << std::endl;
+
+    /// gimbal coordinate system to odom coordinate system
+
     Eigen::Matrix3d R_odom_gimbal;
     R_odom_gimbal = R_yaw * R_pitch * R_roll;
 
@@ -112,13 +113,18 @@ void coordinateTransform(
     odom_tvec.at<double>(1,0) = P_odom(1);
     odom_tvec.at<double>(2,0) = P_odom(2);
 
-
+    // Transform rotation vector
     cv::Mat R_Mat;
     cv::Rodrigues(rvec, R_Mat);
     Eigen::Matrix3d R_cam_center;
     cv::cv2eigen(R_Mat, R_cam_center);
 
-    Eigen::Matrix3d R = R_odom_gimbal * R_gimbal_camera * R_camera_photocenter * R_cam_center;
+    Eigen::Matrix3d R_cam_center_corrected =
+    R_camera_photocenter *
+    R_cam_center *
+    R_camera_photocenter.transpose();
+
+    Eigen::Matrix3d R = R_odom_gimbal * R_gimbal_camera * R_cam_center_corrected;
     cv::Mat R_mat_;
     cv::eigen2cv(R, R_mat_);
     cv::Rodrigues(R_mat_, odom_rvec);

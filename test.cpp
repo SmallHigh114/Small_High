@@ -19,13 +19,12 @@ int main()
     float gim2odomDis = 1.414;
     float gimbal_pitch = 0;
     float gimbal_yaw = 0;
-    float gimbal_yaw_mis = 0;
     float roll = 0;
 
     tvec.at<double>(0,0) = 0;
     tvec.at<double>(1,0) = -1;
     tvec.at<double>(2,0) = 1;
-    rvec.at<double>(0,0) = -0.7854;
+    rvec.at<double>(0,0) = 0.7854;
     rvec.at<double>(1,0) = 0;
     rvec.at<double>(2,0) = 0;
 
@@ -56,6 +55,6 @@ int main()
     std::cout << "----------------------------------" << std::endl;
     std::cout << "Total time: " << duration_ms << " ms" << std::endl;
 
-    rvec_vis::show(odom_rvec);
+    visualizeRvec(odom_rvec);
     return 0;
 }
