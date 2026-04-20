@@ -7,6 +7,7 @@
 #ifndef COORDINATE_TRANSFORM_HPP
 #define COORDINATE_TRANSFORM_HPP
 
+#include <iostream>
 #include <cmath>
 #include <optional>
 

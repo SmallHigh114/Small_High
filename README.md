@@ -92,4 +92,5 @@ P_odom   = R_odom_gimbal * P_gimbal + t_odom
 ## 📦 依赖
 
 * OpenCV
+* OpenCV viz
 * Eigen

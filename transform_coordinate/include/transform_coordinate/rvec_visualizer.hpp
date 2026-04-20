@@ -44,6 +44,8 @@
 #include <opencv2/core.hpp>
 #include <opencv2/viz.hpp>
 #include <opencv2/viz/types.hpp>
+#include <opencv2/calib3d.hpp>
+
 #include <string>
 #include <stdexcept>
 #include <cmath>
