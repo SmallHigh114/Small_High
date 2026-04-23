@@ -1,24 +1,6 @@
-# GitHub Upload Directory
-*
-!HikCamera/
-!module/
-!YOLO/
-!detector/
-!filter/
-!pnp_solver/
-!UI/
+# docs
+docs/*
+!docs/30s.mp4
 
-!HikCamera/**
-!module/**
-!YOLO/**
-!detector/**
-!filter/**
-!pnp_solver/**
-!UI/**
-!main.cpp
-
-# Test video
-!30s.mp4
-
-# Git ignor file
-!.gitignore
+# others
+build

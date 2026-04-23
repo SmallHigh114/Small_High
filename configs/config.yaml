@@ -1,0 +1,40 @@
+%YAML:1.0
+---
+
+camera_matrix: !!opencv-matrix
+  rows: 3
+  cols: 3
+  dt: d
+  data: [1000, 0, 640,
+         0, 1000, 360,
+         0, 0, 1]
+
+distortion_coefficients: !!opencv-matrix
+  rows: 1
+  cols: 5
+  dt: d
+  data: [0, 0, 0, 0, 0]
+
+confidence: 0.5
+
+binary_thresh: 88
+# RED 0
+detector_color: 0
+
+laser_param:
+  max_error: 10.0
+  min_ratio: 0.8
+
+filter_param:
+  alpha_static: 0.1
+  alpha_dynamic: 0.8
+  motion_thresh: 2
+  smooth_rate: 0.15
+
+transform_param:
+  cam2gimDis: 0
+  gim2odom_angle: 0
+  gim2odomDis: 0
+  gimbal_pitch: 0
+  gimbal_yaw: 0
+  roll: 0
