@@ -1,5 +1,7 @@
 // 坐标系转化 相机光心 → 相机 → 云台 → Odom(世界坐标系)
-// 相机 云台 Odom坐标系 以右手坐标系为准
+
+//假设X是前方，Y是左方，Z是上方，那么绕X轴旋转是roll，绕Y轴旋是pitch，绕Z轴得到的是yaw。
+//对于右手系，用右手的大拇指指向旋转轴正方向，其他4个手指在握拳过程中的指向便是旋转的正方向。逆时针
 
 // Unit: radian
 // Unit: meter
@@ -74,27 +76,26 @@ void coordinateTransform(
         0, 0, 1;
     Eigen::Matrix3d R_pitch;
     R_pitch <<
-        cos(gimbal_pitch), 0, sin(gimbal_pitch),
+        cos(gimbal_pitch), 0, -sin(gimbal_pitch),
         0, 1, 0,
-        -sin(gimbal_pitch), 0, cos(gimbal_pitch);
+        sin(gimbal_pitch), 0, cos(gimbal_pitch);
     Eigen::Matrix3d R_roll;
     R_roll << 
         1, 0, 0,
-        0, cos(roll), -sin(roll),
-        0, sin(roll), cos(roll);
+        0, cos(roll), sin(roll),
+        0, -sin(roll), cos(roll);
 
     Eigen::Matrix3d R_gimbal_camera;
-    R_gimbal_camera = R_pitch;
+    R_gimbal_camera << R_pitch;
 
     Eigen::Vector3d t_gimbal;
-    t_gimbal << cam2gimDis * cos(gimbal_pitch), 0, cam2gimDis * sin(gimbal_pitch);
+    t_gimbal << cam2gimDis, 0, 0;  
     std::cout << "t_gimbal" << std::endl << t_gimbal << std::endl;
     Eigen::Vector3d P_gimbal = 
-    R_gimbal_camera * P_camera + t_gimbal;
+    R_gimbal_camera * (P_camera + t_gimbal);
     std::cout << "P_gimbal" << std::endl << P_gimbal << std::endl;
 
     /// gimbal coordinate system to odom coordinate system
-
     Eigen::Matrix3d R_odom_gimbal;
     R_odom_gimbal = R_yaw * R_roll;
 
@@ -102,7 +103,7 @@ void coordinateTransform(
     t_odom << gim2odomDis * cos(gim2odom_angle), 0, gim2odomDis * sin(gim2odom_angle);
     std::cout << "t_odom: " <<  t_odom << std::endl;
     Eigen::Vector3d P_odom =
-     R_odom_gimbal * P_gimbal + t_odom;
+    R_odom_gimbal * (P_gimbal + t_odom);
     std::cout << "P_odom"<< std::endl << P_odom << std::endl;
 
     odom_tvec = cv::Mat::zeros(3, 1, CV_64F);
@@ -121,7 +122,20 @@ void coordinateTransform(
     R_cam_center *
     R_camera_photocenter.transpose();
 
-    Eigen::Matrix3d R = R_odom_gimbal * R_gimbal_camera * R_cam_center_corrected;
+    R_yaw <<
+        cos(gimbal_yaw), sin(gimbal_yaw), 0,
+        -sin(gimbal_yaw), cos(gimbal_yaw), 0,
+        0, 0, 1;
+    R_pitch <<
+        cos(gimbal_pitch), 0, sin(gimbal_pitch),
+        0, 1, 0,
+        -sin(gimbal_pitch), 0, cos(gimbal_pitch);
+    R_roll << 
+        1, 0, 0,
+        0, cos(roll), -sin(roll),
+        0, sin(roll), cos(roll);
+
+    Eigen::Matrix3d R = R_roll * R_pitch * R_yaw * R_cam_center_corrected;
     cv::Mat R_mat_;
     cv::eigen2cv(R, R_mat_);
     cv::Rodrigues(R_mat_, odom_rvec);

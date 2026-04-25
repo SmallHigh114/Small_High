@@ -13,17 +13,17 @@ int main()
     cv::Mat odom_tvec = cv::Mat::zeros(3, 1, CV_64F);
     cv::Mat odom_rvec = cv::Mat::zeros(3, 1, CV_64F);
 
-    float cam2gimDis = 1;
-    float gim2odom_angle = 0.7853;
-    float gim2odomDis = 1.414;
-    float gimbal_pitch = 0;
-    float gimbal_yaw = 0;
+    float cam2gimDis = 0.1;
+    float gim2odom_angle = 1.57;
+    float gim2odomDis = 0.5;
+    float gimbal_pitch = -0.5236;
+    float gimbal_yaw = -0.7854;
     float roll = 0;
 
     tvec.at<double>(0,0) = 0;
-    tvec.at<double>(1,0) = -1;
-    tvec.at<double>(2,0) = 1;
-    rvec.at<double>(0,0) = 0.7854;
+    tvec.at<double>(1,0) = 0;
+    tvec.at<double>(2,0) = 2;
+    rvec.at<double>(0,0) = 0;
     rvec.at<double>(1,0) = 0;
     rvec.at<double>(2,0) = 0;
 

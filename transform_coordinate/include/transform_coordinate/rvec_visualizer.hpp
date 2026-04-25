@@ -196,6 +196,7 @@ private:
             cv::viz::Color(160, 160, 170)
         );
         window_.showWidget("hint_text", hint);
+        window_.spinOnce(30, true);
     }
 
     void addLabel(const std::string& id,
