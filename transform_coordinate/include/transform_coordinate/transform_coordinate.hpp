@@ -88,11 +88,11 @@ void coordinateTransform(
     Eigen::Matrix3d R_gimbal_camera;
     R_gimbal_camera << R_pitch;
 
-    Eigen::Vector3d t_gimbal;
+    Eigen::Vector3d t_gimbal;   
     t_gimbal << cam2gimDis, 0, 0;  
     std::cout << "t_gimbal" << std::endl << t_gimbal << std::endl;
     Eigen::Vector3d P_gimbal = 
-    R_gimbal_camera * (P_camera + t_gimbal);
+    R_gimbal_camera * P_camera + t_gimbal;
     std::cout << "P_gimbal" << std::endl << P_gimbal << std::endl;
 
     /// gimbal coordinate system to odom coordinate system
@@ -103,7 +103,7 @@ void coordinateTransform(
     t_odom << gim2odomDis * cos(gim2odom_angle), 0, gim2odomDis * sin(gim2odom_angle);
     std::cout << "t_odom: " <<  t_odom << std::endl;
     Eigen::Vector3d P_odom =
-    R_odom_gimbal * (P_gimbal + t_odom);
+    R_odom_gimbal * P_gimbal + t_odom;
     std::cout << "P_odom"<< std::endl << P_odom << std::endl;
 
     odom_tvec = cv::Mat::zeros(3, 1, CV_64F);

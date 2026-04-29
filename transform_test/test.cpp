@@ -14,17 +14,17 @@ int main()
     cv::Mat odom_rvec = cv::Mat::zeros(3, 1, CV_64F);
 
     float cam2gimDis = 0.1;
-    float gim2odom_angle = 1.57;
-    float gim2odomDis = 0.5;
-    float gimbal_pitch = -0.5236;
-    float gimbal_yaw = -0.7854;
+    float gim2odom_angle = 0.7853;
+    float gim2odomDis = 1.414;
+    float gimbal_pitch = 0.2617;
+    float gimbal_yaw = 0.7853;
     float roll = 0;
 
     tvec.at<double>(0,0) = 0;
-    tvec.at<double>(1,0) = 0;
-    tvec.at<double>(2,0) = 2;
+    tvec.at<double>(1,0) = -1;
+    tvec.at<double>(2,0) = 1;
     rvec.at<double>(0,0) = 0;
-    rvec.at<double>(1,0) = 0;
+    rvec.at<double>(1,0) = -0.7853;
     rvec.at<double>(2,0) = 0;
 
     TransForm::coordinateTransform(
@@ -53,6 +53,10 @@ int main()
     std::cout << "----------------------------------" << std::endl;
     std::cout << "Total time: " << duration_ms << " ms" << std::endl;
 
-    visualizeRvec(odom_rvec);
+    visualizeRvec(
+    odom_rvec,
+    cam2gimDis, gim2odom_angle, gim2odomDis,
+    gimbal_pitch, gimbal_yaw, roll
+);  
     return 0;
 }

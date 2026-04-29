@@ -1,267 +1,249 @@
-#pragma once
+#ifndef RVEC_VISUALIZER_HPP
+#define RVEC_VISUALIZER_HPP
 
 /**
  * @file rvec_visualizer.hpp
- * @brief 旋转向量姿态箭头可视化（基于 OpenCV viz 模块）
+ * @brief 使用 OpenCV Viz 可视化相机、云台、世界(Odom)三个坐标系
  *
- * 可视化方案
- * ----------
- *   用一支 **单箭头** 表示目标的最终姿态：
- *     箭头方向 = 旋转后的 X 轴正方向（物体"朝前"方向）
- *     箭头根部 = 世界原点
- *     箭头颜色 = 亮橙色，醒目易辨
+ * 坐标系约定（右手系）:
+ *   X → 前方   Y → 左方   Z → 上方
  *
- *   不拆解 XYZ 三轴，整体感更强。
- *
- * 坐标系约定（右手系）
- * --------------------
- *   X → 前（Forward）
- *   Y → 左（Left）
- *   Z → 上（Up）
- *
- * 初始视角
- * --------
- *   从 X 轴负半轴朝原点看，Z 轴朝上。
- *   等价于：站在目标"身后"面对目标，即"看自己右手"的视角。
- *
- * 用法
- * ----
- *   // 1. 阻塞
- *   visualizeRvec(rvec);
- *
- *   // 2. 实例化，循环更新
- *   RvecVisualizer vis;
- *   while (vis.isRunning()) {
- *       vis.update(rvec);
- *   }
- *
- * 依赖
- * ----
- *   OpenCV >= 3.x，编译时开启 viz 模块（需要 VTK）
- *   CMake: find_package(OpenCV REQUIRED COMPONENTS core viz)
+ * 视角交互:
+ *   鼠标左键拖动  → 旋转
+ *   鼠标右键拖动  → 平移
+ *   鼠标滚轮      → 缩放
+ *   按 'q' / 'Q' → 退出
  */
 
-#include <opencv2/core.hpp>
-#include <opencv2/viz.hpp>
-#include <opencv2/viz/types.hpp>
-#include <opencv2/calib3d.hpp>
-
-#include <string>
-#include <stdexcept>
+#include <iostream>
 #include <cmath>
+#include <vector>
+#include <string>
 
-// ============================================================================
-class RvecVisualizer
-{
-public:
-    // ------------------------------------------------------------------------
-    // 构造
-    // ------------------------------------------------------------------------
+#include <opencv2/core.hpp>
+#include <opencv2/calib3d.hpp>
+#include <opencv2/viz.hpp>
+#include <opencv2/viz/widgets.hpp>
 
-    /**
-     * @param window_name  窗口标题
-     * @param arrow_length 箭头长度（米），同时也决定参考坐标系大小
-     */
-    explicit RvecVisualizer(const std::string& window_name = "Pose Arrow",
-                            double             arrow_length = 0.25)
-        : window_(window_name)
-        , arrow_length_(arrow_length)
-    {
-        setupWindow();
-    }
+// ─────────────────────────────────────────────────────────────────────────────
+// 旋转矩阵辅助（右手系，绕各轴正方向逆时针）
+//   X→前，Y→左，Z→上
+//   roll  绕X轴，pitch 绕Y轴，yaw 绕Z轴
+// ─────────────────────────────────────────────────────────────────────────────
+namespace rvec_detail {
 
-    ~RvecVisualizer() = default;
+// 绕 Z 轴（yaw）
+inline cv::Matx33d Rz(double a) {
+    double c=cos(a), s=sin(a);
+    return {c,-s,0,  s,c,0,  0,0,1};
+}
+// 绕 Y 轴（pitch）
+inline cv::Matx33d Ry(double a) {
+    double c=cos(a), s=sin(a);
+    return {c,0,s,  0,1,0,  -s,0,c};
+}
+// 绕 X 轴（roll）
+inline cv::Matx33d Rx(double a) {
+    double c=cos(a), s=sin(a);
+    return {1,0,0,  0,c,-s,  0,s,c};
+}
 
-    // ------------------------------------------------------------------------
-    // 公共接口
-    // ------------------------------------------------------------------------
-
-    /**
-     * @brief 阻塞式展示。更新箭头后进入事件循环，关闭窗口后返回。
-     * @param rvec  PnP 解算的旋转向量（cv::Vec3d）
-     */
-    void show(const cv::Vec3d& rvec)
-    {
-        update(rvec);
-        window_.spin();
-    }
-
-    void show(const cv::Mat& rvec) { show(toVec3d(rvec)); }
-
-    /**
-     * @brief 非阻塞更新。刷新箭头姿态，内部调用 spinOnce。
-     * @param rvec      旋转向量
-     * @param delay_ms  spinOnce 等待时间（ms）
-     */
-    void update(const cv::Vec3d& rvec, int delay_ms = 1)
-    {
-        if (window_.wasStopped()) return; 
-        // rvec → 旋转矩阵
-        cv::Mat R;
-        cv::Rodrigues(rvec, R);
-
-        // 旋转后的 X 轴方向（物体朝前方向）= R 的第 0 列
-        cv::Vec3d xDir(
-            R.at<double>(0, 0),
-            R.at<double>(1, 0),
-            R.at<double>(2, 0)
-        );
-
-        // 箭头：从原点指向 xDir * arrow_length_
-        cv::Point3d tip(
-            xDir[0] * arrow_length_,
-            xDir[1] * arrow_length_,
-            xDir[2] * arrow_length_
-        );
-
-        // WArrow(pt1=tail, pt2=tip, thickness, color)
-        double thickness = arrow_length_ * 0.04;
-        auto arrow = cv::viz::WArrow(
-            cv::Point3d(0, 0, 0),
-            tip,
-            thickness,
-            cv::viz::Color(255, 140, 0)   // 亮橙色
-        );
-        window_.showWidget("pose_arrow", arrow);
-
-        // 旋转角度文字
-        double angle_deg = cv::norm(rvec) * 180.0 / CV_PI;
-        std::string info = "angle: " + std::to_string(static_cast<int>(std::round(angle_deg))) + " deg";
-        auto txt = cv::viz::WText(info, cv::Point(10, 30), 16, cv::viz::Color::white());
-        window_.showWidget("angle_text", txt);
-
-        window_.spinOnce(delay_ms, true);
-    }
-
-    void update(const cv::Mat& rvec, int delay_ms = 1)
-    {
-        update(toVec3d(rvec), delay_ms);
-    }
-
-    void spin()                     { window_.spin(); }
-    void spinOnce(int delay_ms = 1) { window_.spinOnce(delay_ms, true); }
-    bool isRunning() const          { return !window_.wasStopped(); }
-
-private:
-    // ------------------------------------------------------------------------
-    // 初始化
-    // ------------------------------------------------------------------------
-
-    cv::viz::Viz3d window_;
-    double         arrow_length_;
-
-    void setupWindow()
-    {
-        // 背景：深灰蓝
-        window_.setBackgroundColor(cv::viz::Color(25, 25, 35));
-
-        // ── 世界参考坐标系（小，仅作方向参考） ──────────────────────
-        double refLen = arrow_length_ * 0.5;
-        auto worldAxes = cv::viz::WCoordinateSystem(refLen);
-        window_.showWidget("world_ref", worldAxes);
-
-        // 三轴标签
-        double lbl = refLen + arrow_length_ * 0.08;
-        addLabel("lX", "X (fwd)",  cv::Point3d(lbl, 0,   0),   cv::viz::Color(100, 220, 100));
-        addLabel("lY", "Y (left)", cv::Point3d(0,   lbl,  0),   cv::viz::Color(100, 160, 255));
-        addLabel("lZ", "Z (up)",   cv::Point3d(0,   0,   lbl),  cv::viz::Color(255, 100, 100));
-
-        // ── 占位箭头（初始指向 +X，update() 会覆盖） ──────────────
-        double thickness = arrow_length_ * 0.04;
-        auto initArrow = cv::viz::WArrow(
-            cv::Point3d(0, 0, 0),
-            cv::Point3d(arrow_length_, 0, 0),
-            thickness,
-            cv::viz::Color(255, 140, 0)
-        );
-        window_.showWidget("pose_arrow", initArrow);
-
-        // ── 网格（XY 平面 Z=0，增强空间感） ────────────────────────
-        addGrid();
-
-        // ── 初始视角：从 X 负半轴看向原点，Z 朝上 ─────────────────
-        double camDist = arrow_length_ * 4.5;
-        window_.setViewerPose(
-            cv::viz::makeCameraPose(
-                cv::Vec3d(-camDist, 0, 0),
-                cv::Vec3d(0, 0, 0),
-                cv::Vec3d(0, 0, 1)
-            )
-        );
-
-        // 说明文字
-        auto hint = cv::viz::WText(
-            "Orange arrow = rotated X-axis (forward direction)",
-            cv::Point(10, 55), 14,
-            cv::viz::Color(160, 160, 170)
-        );
-        window_.showWidget("hint_text", hint);
-        window_.spinOnce(30, true);
-    }
-
-    void addLabel(const std::string& id,
-                  const std::string& text,
-                  const cv::Point3d& pos,
-                  const cv::viz::Color& color)
-    {
-        auto w = cv::viz::WText3D(text, pos, arrow_length_ * 0.10, false, color);
-        window_.showWidget(id, w);
-    }
-
-    void addGrid()
-    {
-        double half = arrow_length_ * 1.6;
-        double step = arrow_length_ * 0.4;
-        cv::viz::Color gc(50, 50, 65);
-        int idx = 0;
-        for (double t = -half; t <= half + 1e-9; t += step)
-        {
-            std::vector<cv::Point3d> lx = {{t, -half, 0}, {t, half, 0}};
-            window_.showWidget("gx" + std::to_string(idx),
-                               cv::viz::WPolyLine(lx, gc));
-
-            std::vector<cv::Point3d> ly = {{-half, t, 0}, {half, t, 0}};
-            window_.showWidget("gy" + std::to_string(idx),
-                               cv::viz::WPolyLine(ly, gc));
-            ++idx;
+// ── keyboard callback：按 q/Q/Escape 退出 ──────────────────────────────────
+struct QuitOnKey {
+    static void callback(const cv::viz::KeyboardEvent & e, void * cookie) {
+        if (e.action != cv::viz::KeyboardEvent::KEY_DOWN) return;
+        char k = e.code;
+        if (k == 'q' || k == 'Q' || k == 27 /* ESC */) {
+            auto * win = reinterpret_cast<cv::viz::Viz3d*>(cookie);
+            win->close();
         }
-    }
-
-    // ------------------------------------------------------------------------
-    // 工具
-    // ------------------------------------------------------------------------
-
-    static cv::Vec3d toVec3d(const cv::Mat& rvec)
-    {
-        CV_Assert(!rvec.empty());
-        cv::Mat tmp;
-        rvec.convertTo(tmp, CV_64F);
-        tmp = tmp.reshape(1, 3);
-        if (tmp.rows != 3 || tmp.cols != 1)
-            throw std::invalid_argument("rvec must be a 3-element vector");
-        return cv::Vec3d(tmp.at<double>(0), tmp.at<double>(1), tmp.at<double>(2));
     }
 };
 
-// ============================================================================
-// 便捷独立函数
-// ============================================================================
+} // namespace rvec_detail
 
-/**
- * @brief 一行代码可视化 rvec（阻塞，关闭窗口后返回）
- */
-inline void visualizeRvec(const cv::Vec3d&   rvec,
-                          const std::string& window_name  = "Pose Arrow",
-                          double             arrow_length = 0.25)
+// ─────────────────────────────────────────────────────────────────────────────
+// 主可视化函数
+// ─────────────────────────────────────────────────────────────────────────────
+inline void visualizeRvec(
+    const cv::Mat & odom_rvec,
+    float cam2gimDis     = 0.1f,
+    float gim2odom_angle = 1.57f,
+    float gim2odomDis    = 0.5f,
+    float gimbal_pitch   = -0.5236f,
+    float gimbal_yaw     = -0.7854f,
+    float roll           = 0.0f,
+    double axis_length   = 0.5
+)
 {
-    RvecVisualizer vis(window_name, arrow_length);
-    vis.show(rvec);
+    using namespace rvec_detail;
+
+    // ── 1. 重建各坐标系原点（与 coordinateTransform 逻辑一致）──────────────
+
+    // 相机光心系 → 相机坐标系（右手系：X前Y左Z上）
+    //   OpenCV 光心系：Z前、X右、Y下
+    //   变换后：X_cam = Z_photo（前），Y_cam = -X_photo（左），Z_cam = -Y_photo（上）
+    cv::Matx33d R_cam_photo(
+         0,  0,  1,
+        -1,  0,  0,
+         0, -1,  0);
+
+    cv::Matx33d R_pitch       = Ry(static_cast<double>(gimbal_pitch));
+    cv::Matx33d R_yaw         = Rz(static_cast<double>(gimbal_yaw));
+    cv::Matx33d R_roll        = Rx(static_cast<double>(roll));
+    cv::Matx33d R_odom_gimbal = R_yaw * R_roll;   // 云台→世界旋转
+
+    // 世界系下云台原点（连杆末端）
+    cv::Vec3d t_odom(
+        static_cast<double>(gim2odomDis) * std::cos(static_cast<double>(gim2odom_angle)),
+        0.0,
+        static_cast<double>(gim2odomDis) * std::sin(static_cast<double>(gim2odom_angle)));
+    cv::Vec3d P_gimbal_world = R_odom_gimbal * t_odom;
+
+    // 相机原点在云台系 = R_pitch * t_gimbal
+    cv::Vec3d t_gimbal(static_cast<double>(cam2gimDis), 0.0, 0.0);
+    cv::Vec3d P_cam_world = R_odom_gimbal * (R_pitch * t_gimbal + t_odom);
+
+    cv::Vec3d P_world(0.0, 0.0, 0.0);
+
+    // ── 2. 控制台诊断 ─────────────────────────────────────────────────────
+    std::cout << "\n=== [Viz] 各坐标系原点（世界系，右手系 X前Y左Z上）===\n";
+    std::cout << "World  : (0, 0, 0)\n";
+    std::cout << "Gimbal : ("<<P_gimbal_world[0]<<", "<<P_gimbal_world[1]<<", "<<P_gimbal_world[2]<<")\n";
+    std::cout << "Camera : ("<<P_cam_world[0]   <<", "<<P_cam_world[1]   <<", "<<P_cam_world[2]   <<")\n";
+    std::cout << "axis_length = " << axis_length << " m\n";
+    std::cout << "====================================================\n\n";
+
+    // ── 3. 构建 Affine3d 位姿 ─────────────────────────────────────────────
+    cv::Affine3d pose_world (cv::Matx33d::eye(),  P_world);
+    cv::Affine3d pose_gimbal(R_odom_gimbal,        P_gimbal_world);
+    cv::Affine3d pose_camera(R_odom_gimbal * R_pitch * R_cam_photo, P_cam_world);
+
+    cv::Mat R_target_mat;
+    cv::Rodrigues(odom_rvec, R_target_mat);
+    cv::Matx33d R_target;
+    for (int r=0;r<3;++r) for(int c=0;c<3;++c)
+        R_target(r,c)=R_target_mat.at<double>(r,c);
+    cv::Affine3d pose_target(R_target, cv::Vec3d(0,0,0));
+
+    // ── 4. 创建窗口 ───────────────────────────────────────────────────────
+    cv::viz::Viz3d win("Coordinate Systems  [右手系: X前 Y左 Z上]");
+    win.setWindowSize(cv::Size(1280, 720));
+    win.setBackgroundColor(cv::viz::Color(25, 25, 35));
+
+    // ── 5. 注册键盘回调（解决按 q 无反应问题）─────────────────────────────
+    win.registerKeyboardCallback(QuitOnKey::callback, &win);
+
+    // ── 6. 坐标轴组件 ─────────────────────────────────────────────────────
+    double al = axis_length;
+
+    // 世界坐标系（最大，标准 RGB 轴：红X绿Y蓝Z）
+    win.showWidget("w_axes",  cv::viz::WCoordinateSystem(al),         pose_world);
+    win.showWidget("w_label", cv::viz::WText3D("World (Odom)",
+        cv::Point3d(0, 0, al*1.15), al*0.14, false, cv::viz::Color::white()), pose_world);
+
+    // 云台坐标系（黄色标签）
+    win.showWidget("g_axes",  cv::viz::WCoordinateSystem(al*0.8),     pose_gimbal);
+    win.showWidget("g_label", cv::viz::WText3D("Gimbal",
+        cv::Point3d(0, 0, al*1.05), al*0.12, false, cv::viz::Color::yellow()), pose_gimbal);
+
+    // 相机坐标系（青色标签）
+    win.showWidget("c_axes",  cv::viz::WCoordinateSystem(al*0.65),    pose_camera);
+    win.showWidget("c_label", cv::viz::WText3D("Camera",
+        cv::Point3d(0, 0, al*0.85), al*0.11, false, cv::viz::Color::cyan()), pose_camera);
+
+    // 目标姿态（绿色标签，位于世界原点）
+    win.showWidget("t_axes",  cv::viz::WCoordinateSystem(al*0.5),     pose_target);
+    win.showWidget("t_label", cv::viz::WText3D("Target",
+        cv::Point3d(0, 0, al*0.65), al*0.10, false, cv::viz::Color::green()), pose_target);
+
+    // ── 7. 变换链连接线 ───────────────────────────────────────────────────
+    auto makeLine = [&](cv::Vec3d a, cv::Vec3d b, cv::viz::Color col,
+                        const std::string & id) {
+        std::vector<cv::Point3d> pts = {
+            cv::Point3d(a[0],a[1],a[2]), cv::Point3d(b[0],b[1],b[2])};
+        cv::viz::WPolyLine line(pts, col);
+        line.setRenderingProperty(cv::viz::LINE_WIDTH, 2.5);
+        win.showWidget(id, line);
+    };
+    makeLine(P_world,        P_gimbal_world, cv::viz::Color::yellow(), "line_wg");
+    makeLine(P_gimbal_world, P_cam_world,    cv::viz::Color::cyan(),   "line_gc");
+
+    // ── 8. 原点球体（更容易找到各坐标系位置）────────────────────────────
+    double sr = al * 0.045;
+    win.showWidget("sp_w", cv::viz::WSphere(cv::Point3d(0,0,0), sr, 12,
+        cv::viz::Color::white()));
+    win.showWidget("sp_g", cv::viz::WSphere(
+        cv::Point3d(P_gimbal_world[0],P_gimbal_world[1],P_gimbal_world[2]), sr, 12,
+        cv::viz::Color::yellow()));
+    win.showWidget("sp_c", cv::viz::WSphere(
+        cv::Point3d(P_cam_world[0],P_cam_world[1],P_cam_world[2]), sr, 12,
+        cv::viz::Color::cyan()));
+
+    // ── 9. 右手系参考网格（XY 平面 = 水平地面，Z 朝上）──────────────────
+    // WGrid 默认在 XY 平面。Viz 内部坐标 = 右手系，与我们约定一致。
+    cv::viz::WGrid grid(cv::Vec2i(20, 20), cv::Vec2d(0.2, 0.2),
+                        cv::viz::Color(55, 55, 55));
+    win.showWidget("grid", grid);
+
+    // 在 X/Y/Z 轴端点加箭头标注（帮助确认右手系方向）
+    auto makeArrowLabel = [&](cv::Vec3d from, cv::Vec3d to,
+                              cv::viz::Color col, const std::string & label,
+                              const std::string & id) {
+        // 箭头
+        win.showWidget(id+"_arr",
+            cv::viz::WArrow(cv::Point3d(from[0],from[1],from[2]),
+                            cv::Point3d(to[0],  to[1],  to[2]),
+                            0.005, col));
+        // 文字
+        win.showWidget(id+"_txt",
+            cv::viz::WText3D(label,
+                cv::Point3d(to[0], to[1], to[2]+al*0.08),
+                al*0.12, false, col));
+    };
+    double gl = al * 1.35;  // 全局轴箭头长度（稍长于坐标轴）
+    makeArrowLabel({0,0,0},{gl,0,0},  cv::viz::Color::red(),   "X (前)", "ax_x");
+    makeArrowLabel({0,0,0},{0,gl,0},  cv::viz::Color::green(), "Y (左)", "ax_y");
+    makeArrowLabel({0,0,0},{0,0,gl},  cv::viz::Color::blue(),  "Z (上)", "ax_z");
+
+    // ── 10. HUD 文字 ──────────────────────────────────────────────────────
+    win.showWidget("hud_op",
+        cv::viz::WText(
+            "Left drag: Rotate  |  Right drag: Pan  |  Scroll: Zoom  |  Q: Quit",
+            cv::Point(10, 22), 15, cv::viz::Color(200, 200, 200)));
+    win.showWidget("hud_legend",
+        cv::viz::WText(
+            "White=World(Odom)   Yellow=Gimbal   Cyan=Camera   Green=Target",
+            cv::Point(10, 48), 14, cv::viz::Color(160, 200, 160)));
+    win.showWidget("hud_cs",
+        cv::viz::WText(
+            "Right-hand frame: X=Forward(Red)  Y=Left(Green)  Z=Up(Blue)",
+            cv::Point(10, 72), 13, cv::viz::Color(140, 180, 220)));
+
+    // ── 11. 设置初始视角（makeCameraPose 保证正确） ───────────────────────
+    //   从右前上方俯瞰原点，up = Z 轴
+    win.setViewerPose(
+        cv::viz::makeCameraPose(
+            cv::Vec3d(2.0, -1.5, 1.8),   // eye
+            cv::Vec3d(0.0,  0.0, 0.0),   // 看向原点
+            cv::Vec3d(0.0,  0.0, 1.0)    // Z 朝上
+        )
+    );
+
+    // ── 12. 主循环 ────────────────────────────────────────────────────────
+    //
+    //  【交互问题根本原因】
+    //  spinOnce(ms, force_redraw) 的第二个参数 force_redraw=true 会强制每帧
+    //  重绘，但在某些 VTK 后端下反而阻止了事件队列处理。
+    //  正确做法：
+    //    - 用 spin() 阻塞直到窗口关闭（最简单，完全交互）
+    //    - 或 spinOnce(1, false) 快速轮询（force_redraw=false）
+    //
+    //  这里用 spin()，交互由 VTK 内部 interactor 全权处理。
+    //  键盘 q/Q/ESC → registerKeyboardCallback 里调用 win.close()。
+    //
+    std::cout << "[Viz] 窗口已打开 — 鼠标旋转/平移/缩放，按 Q 退出\n";
+    win.spin();   // ← 阻塞，完全交互，替代 while(!wasStopped()) spinOnce
 }
 
-inline void visualizeRvec(const cv::Mat&     rvec,
-                          const std::string& window_name  = "Pose Arrow",
-                          double             arrow_length = 0.25)
-{
-    RvecVisualizer vis(window_name, arrow_length);
-    vis.show(rvec);
-}
+#endif // RVEC_VISUALIZER_HPP
