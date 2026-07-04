@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.23)
 
 find_package(OpenCV REQUIRED)
 find_package(OpenVINO QUIET)
+find_package(yaml-cpp REQUIRED)
 
 file(GLOB SRC_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
@@ -12,6 +13,11 @@ file(GLOB SRC_SOURCES
 set(SOURCES ${SRC_SOURCES})
 
 add_executable(test ${SOURCES})
+
+target_link_libraries(test
+    PRIVATE
+    yaml-cpp
+)
 
 target_include_directories(test
     PRIVATE 

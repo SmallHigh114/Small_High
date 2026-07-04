@@ -4,16 +4,22 @@ cmake_minimum_required(VERSION 3.23)
 find_package(OpenCV REQUIRED)
 find_package(Eigen3 REQUIRED)
 
-add_library(transform_coordinate INTERFACE)
+file(GLOB SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c"
+)
+
+add_library(transform_coordinate ${SOURCES})
 
 target_include_directories(transform_coordinate
-    INTERFACE
+    PUBLIC 
         ${CMAKE_CURRENT_SOURCE_DIR}/include
+    INTERFACE
         ${OpenCV_INCLUDE_DIRS}  # 对应的 OpenCV 包含目录
 )
 
 target_link_libraries(transform_coordinate
-    INTERFACE
+    PUBLIC 
         Eigen3::Eigen
         ${OpenCV_LIBS}
 )
