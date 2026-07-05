@@ -66,7 +66,7 @@ int main() {
         tf::CoordinateInit(buf, cod, true);
     }
 
-    Eigen::Isometry3d T_camera_to_gimbal = buf.get("camera","gimbal", stamp, std::chrono::nanoseconds(1000));
+    Eigen::Isometry3d T_camera_to_gimbal = buf.get("camera","gimbal", stamp, std::chrono::milliseconds(10));
     std::cout << T_camera_to_gimbal.matrix() << std::endl;
 
     return 0;
