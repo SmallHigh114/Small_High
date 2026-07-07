@@ -163,3 +163,9 @@ std::cout << "Point in gimbal frame: " << P_gimbal.transpose() << std::endl;
 std::cout << "Point transformed to camera frame: " << P_camera.transpose() << std::endl;
 
 ```
+## 致谢
+
+本项目基于 [FastTF](https://github.com/dorezyuk/fast_tf) 进行修改和二次开发。
+
+* **原作者：** Dima Dorezyuk
+* **原项目开源协议：** MIT License
